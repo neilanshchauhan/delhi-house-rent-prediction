@@ -1,0 +1,37 @@
+model_details:
+  name: delhi_house_rent_predictor
+  best_model_name: Gradient Boosting
+  model_parameters:
+    alpha: 0.9
+    ccp_alpha: 0.0
+    criterion: friedman_mse
+    init: null
+    learning_rate: 0.1
+    loss: squared_error
+    max_depth: 3
+    max_features: null
+    max_leaf_nodes: null
+    min_impurity_decrease: 0.0
+    min_samples_leaf: 1
+    min_samples_split: 2
+    min_weight_fraction_leaf: 0.0
+    n_estimators: 100
+    n_iter_no_change: null
+    random_state: 42
+    subsample: 1.0
+    tol: 0.0001
+    validation_fraction: 0.1
+    verbose: 0
+    warm_start: false
+  target_variable: price
+  features_used:
+  - size_sq_ft
+  - location_avg_price
+  - price_per_sqft
+  - localityName
+  - propertyType
+  - bedrooms
+performance_metrics:
+  r2_score: 0.986324832587374
+  mean_absolute_error: 1749.438384665988
+  root_mean_squared_error: 6065.573209136651
