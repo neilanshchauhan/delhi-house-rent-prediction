@@ -1,0 +1,18 @@
+# --- API Framework ---
+fastapi==0.95.2
+uvicorn==0.22.0  
+
+# --- ML & Data Handling ---
+scikit-learn==1.2.2
+pandas==1.5.3
+numpy==1.24.3
+joblib==1.3.1
+
+# --- ML Models ---
+# Include all potential model libraries to ensure the .pkl can be loaded
+xgboost==1.7.5
+lightgbm==3.3.5
+
+# --- Utilities ---
+# PyYAML is not strictly needed by the API, but is part of the overall project
+pyyaml==6.0
