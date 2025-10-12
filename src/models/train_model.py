@@ -29,7 +29,6 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 import xgboost as xgb
-import lightgbm as lgb
 
 # --- MLflow Imports ---
 import mlflow
@@ -69,7 +68,7 @@ def get_model_instance(name, params):
         'Random Forest': RandomForestRegressor,
         'Gradient Boosting': GradientBoostingRegressor,
         'XGBoost': xgb.XGBRegressor,
-        'LightGBM': lgb.LGBMRegressor
+
     }
     if name not in model_map:
         raise ValueError(f"Unsupported model specified in config: '{name}'")
