@@ -81,19 +81,29 @@ def get_model_instance(name, params):
 # -----------------------------
 def wait_for_mlflow(uri, max_retries=30, retry_delay=2):
     """Wait for MLflow server to be ready."""
+    import requests
+    
     for attempt in range(max_retries):
         try:
             mlflow.set_tracking_uri(uri)
-            client = MlflowClient()
-            client.list_experiments()  # Test connection
-            logger.info(f"MLflow server is ready at {uri}")
-            return True
-        except Exception as e:
+            # Test connection with an actual HTTP request
+            response = requests.get(f"{uri}/health", timeout=5)
+            if response.status_code == 200:
+                logger.info(f"MLflow server is ready at {uri}")
+                return True
+        except requests.exceptions.ConnectionError:
             if attempt < max_retries - 1:
-                logger.warning(f"MLflow not ready (attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s... Error: {str(e)[:100]}")
+                logger.warning(f"MLflow not ready (attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s...")
                 time.sleep(retry_delay)
             else:
                 logger.error(f"Failed to connect to MLflow after {max_retries} attempts")
+                return False
+        except Exception as e:
+            if attempt < max_retries - 1:
+                logger.warning(f"MLflow connection check failed (attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s... Error: {str(e)[:80]}")
+                time.sleep(retry_delay)
+            else:
+                logger.error(f"Failed to connect to MLflow after {max_retries} attempts: {str(e)}")
                 return False
     return False
 
