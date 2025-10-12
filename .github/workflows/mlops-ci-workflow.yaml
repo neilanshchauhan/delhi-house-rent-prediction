@@ -48,6 +48,19 @@ jobs:
                   --backend-store-uri sqlite:////mlflow/mlflow.db \
                   --default-artifact-root /mlflow/mlruns
 
+      - name: Wait for MLflow to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:5555/health >/dev/null 2>&1; then
+              echo "MLflow is ready!"
+              exit 0
+            fi
+            echo "Waiting for MLflow... (attempt $i/30)"
+            sleep 2
+          done
+          echo "MLflow failed to start"
+          exit 1
+
       - name : Run Model Training Tests
         run: |
           python src/models/train_model.py  \
