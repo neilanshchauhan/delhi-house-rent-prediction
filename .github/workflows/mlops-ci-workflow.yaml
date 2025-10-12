@@ -1,3 +1,4 @@
+
 name: MLOps CI Workflow
 
 on:
@@ -26,42 +27,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
-      - name: Run Data Preprocessing Tests
+      - name : Run Data Preprocessing Tests
         run: |
           python src/data/run_processing.py  \
           --input data/raw/data.csv  \
           --output data/processed/cleaned_house_data_v1.csv
-          
-      - name: Run Feature Engineering Tests
+      - name : Run Feature Engineering Tests
         run: |
           python src/features/engineer.py  \
           --input data/processed/final_data.csv  \
           --output data/processed/featured_house_data.csv   \
           --preprocessor models/trained/preprocessor.pkl
-          
-      - name: Setup MLFlow (Docker)
+      - name: Setup MLFLow (Docker)
         run: |
-          docker pull ghcr.io/mlflow/mlflow:latest
-          docker run -d -p 5555:5000 --name mlflow-server ghcr.io/mlflow/mlflow:latest \
-          mlflow server \
-            --host 0.0.0.0 \
-            --backend-store-uri sqlite:////mlflow/mlflow.db \
-            --default-artifact-root /mlflow/mlruns
+                docker pull ghcr.io/mlflow/mlflow:latest
+                docker run -d -p 5555:5000 --name mlflow-server ghcr.io/mlflow/mlflow:latest \
+                mlflow server \
+                  --host 0.0.0.0 \
+                  --backend-store-uri sqlite:////mlflow/mlflow.db \
+                  --default-artifact-root /mlflow/mlruns
 
-      - name: Wait for MLflow Server to be Ready
-        run: |
-          for i in {1..30}; do
-            if curl -f http://localhost:5555/health 2>/dev/null || curl -f http://localhost:5555/api/2.0/mlflow/experiments/list 2>/dev/null; then
-              echo "MLflow server is ready!"
-              exit 0
-            fi
-            echo "Waiting for MLflow server... attempt $i/30"
-            sleep 2
-          done
-          echo "MLflow server failed to start"
-          exit 1
-
-      - name: Run Model Training Tests
+      - name : Run Model Training Tests
         run: |
           python src/models/train_model.py  \
           --config configs/model_config.yaml \
@@ -69,7 +55,7 @@ jobs:
           --models-dir models \
           --mlflow-tracking-uri http://localhost:5555
           
-      - name: Cleaning up MLFlow
+      - name : Cleaning up MLFlow
         run: |
           docker stop mlflow-server
           docker rm mlflow-server
