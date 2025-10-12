@@ -40,7 +40,7 @@ jobs:
           --preprocessor models/trained/preprocessor.pkl
 
       - name: Setup MLFLow (Docker)
-              run: |
+        run: |
                 docker pull ghcr.io/mlflow/mlflow:latest
                 docker run -d -p 5555:5000 --name mlflow-server ghcr.io/mlflow/mlflow:latest \
                 mlflow server \
