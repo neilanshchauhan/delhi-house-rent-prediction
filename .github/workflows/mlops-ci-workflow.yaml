@@ -1,4 +1,4 @@
-name: MLOps CI Workflow 
+name: MLOps CI Workflow with Docker
 
 on:
   push:
@@ -12,23 +12,9 @@ jobs:
   workflow:
     runs-on: ubuntu-latest
 
-    services:
-      mlflow:
-        image: ghcr.io/mlflow/mlflow:latest
-        ports:
-          - 5555:5000
-        options: >-
-          --health-cmd "curl -f http://localhost:5000/health || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        env:
-          MLFLOW_BACKEND_STORE_URI: sqlite:////tmp/mlflow.db
-          MLFLOW_DEFAULT_ARTIFACT_ROOT: /tmp/mlruns
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -53,23 +39,87 @@ jobs:
           --output data/processed/featured_house_data.csv   \
           --preprocessor models/trained/preprocessor.pkl
 
-      - name: Wait for MLflow to be ready
+      - name: Start MLflow Server with Docker
         run: |
-          for i in {1..30}; do
-            if curl -s http://localhost:5555/health > /dev/null; then
-              echo "MLflow server is ready!"
+          # Create volume directories
+          mkdir -p $(pwd)/mlflow_data/mlruns
+          mkdir -p $(pwd)/mlflow_data/db
+          
+          # Run MLflow container with proper command
+          docker run -d \
+            --name mlflow-server \
+            -p 5555:5000 \
+            -v $(pwd)/mlflow_data:/mlflow \
+            ghcr.io/mlflow/mlflow:latest \
+            mlflow server \
+            --host 0.0.0.0 \
+            --port 5000 \
+            --backend-store-uri sqlite:///mlflow/db/mlflow.db \
+            --default-artifact-root /mlflow/mlruns \
+            --serve-artifacts
+          
+          # Wait for container to be running
+          echo "Waiting for container to start..."
+          for i in {1..10}; do
+            if [ "$(docker inspect -f '{{.State.Running}}' mlflow-server 2>/dev/null)" == "true" ]; then
+              echo "Container is running"
               break
             fi
-            echo "Waiting for MLflow... ($i/30)"
+            sleep 1
+          done
+          
+          # Check container logs
+          docker logs mlflow-server
+          
+          # Wait for MLflow server to be ready
+          echo "Waiting for MLflow server to be ready..."
+          max_attempts=30
+          attempt=0
+          
+          while [ $attempt -lt $max_attempts ]; do
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:5555/health | grep -q "200"; then
+              echo "✓ MLflow server is ready!"
+              break
+            fi
+            attempt=$((attempt + 1))
+            echo "Waiting... (attempt $attempt/$max_attempts)"
             sleep 2
           done
+          
+          if [ $attempt -eq $max_attempts ]; then
+            echo "Failed to connect to MLflow server"
+            docker logs mlflow-server
+            exit 1
+          fi
 
       - name: Run Model Training Tests
         env:
           MLFLOW_TRACKING_URI: http://localhost:5555
         run: |
-          python src/models/train_model.py  \
+          # Verify connection
+          curl -I http://localhost:5555
+          
+          # Run training
+          python src/models/train_model.py \
             --config configs/model_config.yaml \
             --data data/processed/featured_house_data.csv \
             --models-dir models \
             --mlflow-tracking-uri http://localhost:5555
+
+      - name: Debug on Failure
+        if: failure()
+        run: |
+          echo "=== Docker Container Status ==="
+          docker ps -a
+          echo "=== Docker Logs ==="
+          docker logs mlflow-server || true
+          echo "=== Network Inspection ==="
+          docker inspect mlflow-server | grep -A 10 NetworkSettings || true
+          echo "=== Port Binding Check ==="
+          netstat -tuln | grep 5555 || true
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop mlflow-server || true
+          docker rm mlflow-server || true
