@@ -1,4 +1,4 @@
-name: MLOps CI Workflow with Docker
+name: MLOps CI Workflow
 
 on:
   push:
@@ -19,57 +19,54 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11.11 
+          python-version: 3.11.11
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      
+
       - name: Run Data Preprocessing Tests
         run: |
-          python src/data/run_processing.py  \
-          --input data/raw/data.csv  \
-          --output data/processed/cleaned_house_data_v1.csv
+          python src/data/preprocessing.py \
+            --input data/raw/data.csv \
+            --output data/processed/final_data.csv
 
       - name: Run Feature Engineering Tests
         run: |
-          python src/features/engineer.py  \
-          --input data/processed/final_data.csv  \
-          --output data/processed/featured_house_data.csv   \
-          --preprocessor models/trained/preprocessor.pkl
+          python src/features/engineer.py \
+            --input data/processed/final_data.csv \
+            --output data/processed/featured_house_data.csv \
+            --preprocessor models/trained/preprocessor.pkl
 
       - name: Start MLflow Server with Docker
         run: |
-          # Create volume directories
-          mkdir -p $(pwd)/mlflow_data/mlruns
-          mkdir -p $(pwd)/mlflow_data/db
+          # Pull the image
+          docker pull ghcr.io/mlflow/mlflow:latest
           
-          # Run MLflow container with proper command
+          # Run MLflow with proper permissions
+          # Use /tmp for artifact storage (already writable in container)
           docker run -d \
             --name mlflow-server \
             -p 5555:5000 \
-            -v $(pwd)/mlflow_data:/mlflow \
             ghcr.io/mlflow/mlflow:latest \
             mlflow server \
             --host 0.0.0.0 \
             --port 5000 \
-            --backend-store-uri sqlite:///mlflow/db/mlflow.db \
-            --default-artifact-root /mlflow/mlruns \
-            --serve-artifacts
+            --backend-store-uri sqlite:////tmp/mlflow/mlflow.db \
+            --default-artifact-root /tmp/mlflow/artifacts
           
-          # Wait for container to be running
+          # Wait for container to start
           echo "Waiting for container to start..."
-          for i in {1..10}; do
-            if [ "$(docker inspect -f '{{.State.Running}}' mlflow-server 2>/dev/null)" == "true" ]; then
-              echo "Container is running"
-              break
-            fi
-            sleep 1
-          done
+          sleep 3
           
-          # Check container logs
-          docker logs mlflow-server
+          # Check container is running
+          if [ "$(docker inspect -f '{{.State.Running}}' mlflow-server 2>/dev/null)" != "true" ]; then
+            echo "Container failed to start"
+            docker logs mlflow-server
+            exit 1
+          fi
+          echo "✓ Container is running"
           
           # Wait for MLflow server to be ready
           echo "Waiting for MLflow server to be ready..."
@@ -77,12 +74,13 @@ jobs:
           attempt=0
           
           while [ $attempt -lt $max_attempts ]; do
-            if curl -s -o /dev/null -w "%{http_code}" http://localhost:5555/health | grep -q "200"; then
+            http_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5555/health 2>/dev/null || echo "000")
+            if [ "$http_code" = "200" ]; then
               echo "✓ MLflow server is ready!"
               break
             fi
             attempt=$((attempt + 1))
-            echo "Waiting... (attempt $attempt/$max_attempts)"
+            echo "Waiting... (attempt $attempt/$max_attempts, HTTP $http_code)"
             sleep 2
           done
           
@@ -92,34 +90,51 @@ jobs:
             exit 1
           fi
 
-      - name: Run Model Training Tests
+      - name: Verify MLflow Connection
+        run: |
+          echo "Testing MLflow connection..."
+          curl -I http://localhost:5555/
+          echo ""
+          echo "Connection successful!"
+
+      - name: Run Model Training
         env:
           MLFLOW_TRACKING_URI: http://localhost:5555
         run: |
-          # Verify connection
-          curl -I http://localhost:5555
-          
-          # Run training
           python src/models/train_model.py \
             --config configs/model_config.yaml \
             --data data/processed/featured_house_data.csv \
             --models-dir models \
             --mlflow-tracking-uri http://localhost:5555
 
+      - name: Verify Model Output
+        run: |
+          if [ -f "models/trained/delhi_house_rent_predictor.pkl" ]; then
+            echo "✓ Model file created successfully"
+            ls -lh models/trained/
+          else
+            echo "✗ Model file not found"
+            exit 1
+          fi
+
       - name: Debug on Failure
         if: failure()
         run: |
           echo "=== Docker Container Status ==="
           docker ps -a
+          echo ""
           echo "=== Docker Logs ==="
-          docker logs mlflow-server || true
-          echo "=== Network Inspection ==="
-          docker inspect mlflow-server | grep -A 10 NetworkSettings || true
+          docker logs mlflow-server || echo "No logs available"
+          echo ""
           echo "=== Port Binding Check ==="
-          netstat -tuln | grep 5555 || true
+          netstat -tuln | grep 5555 || echo "Port 5555 not listening"
+          echo ""
+          echo "=== Network Test ==="
+          curl -v http://localhost:5555/ || echo "Cannot connect to localhost:5555"
 
       - name: Cleanup
         if: always()
         run: |
           docker stop mlflow-server || true
           docker rm mlflow-server || true
+          echo "✓ Cleanup complete"
