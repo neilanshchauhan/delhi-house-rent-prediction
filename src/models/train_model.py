@@ -180,7 +180,7 @@ def main(args):
         logger.info(f"Logged dependencies as tags: {deps}")
 
         # Save model locally
-        save_dir = os.path.join(args.models_dir, "final")
+        save_dir = os.path.join(args.models_dir, "trained")
         os.makedirs(save_dir, exist_ok=True)
         save_path = os.path.join(save_dir, f"{model_name}.pkl")
         joblib.dump(model, save_path)
