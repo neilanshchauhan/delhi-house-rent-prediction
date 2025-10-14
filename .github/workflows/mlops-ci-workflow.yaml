@@ -1,15 +1,14 @@
-name: MLOps CI Workflow
+name: MLOps CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+    tags: [ 'v*.*.*' ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  workflow:
+  data-processing:
     runs-on: ubuntu-latest
 
     steps:
@@ -39,15 +38,50 @@ jobs:
           --output data/processed/featured_house_data.csv \
           --preprocessor models/trained/preprocessor.pkl
 
+      - name: Upload processed data
+        uses: actions/upload-artifact@v4
+        with:
+          name: processed-data
+          path: data/processed/featured_house_data.csv
+
+      - name: Upload preprocessor
+        uses: actions/upload-artifact@v4
+        with:
+          name: preprocessor
+          path: models/trained/preprocessor.pkl
+
+  model-training:
+    needs: data-processing
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11.11
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download processed data
+        uses: actions/download-artifact@v4
+        with:
+          name: processed-data
+          path: data/processed/
+
       - name: Set up MLflow
         run: |
           docker pull ghcr.io/mlflow/mlflow:latest
           docker run -d -p 5000:5000 --name mlflow-server ghcr.io/mlflow/mlflow:latest mlflow server --host 0.0.0.0 --backend-store-uri sqlite:///mlflow.db
 
-
       - name: Wait for MLflow to start
         run: |
-          for i in {1..30}; do
+          for i in {1..10}; do
             if curl -f http://localhost:5000/health 2>/dev/null; then
               echo "MLflow server is ready!"
               exit 0
@@ -69,6 +103,12 @@ jobs:
           --models-dir models \
           --mlflow-tracking-uri http://localhost:5000
 
+      - name: Upload trained model
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-model
+          path: models/
+
       - name: Cleaning up MLFlow
         if: always()
         run: |
@@ -76,14 +116,34 @@ jobs:
           docker rm mlflow-server || true
           docker rmi ghcr.io/mlflow/mlflow:latest || true
 
+  build-and-publish:
+    needs: model-training
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Download trained model
+        uses: actions/download-artifact@v4
+        with:
+          name: trained-model
+          path: models/
+
+      - name: Download preprocessor
+        uses: actions/download-artifact@v4
+        with:
+          name: preprocessor
+          path: models/trained/
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -92,5 +152,3 @@ jobs:
           file: Dockerfile
           push: true
           tags: ${{ vars.DOCKERHUB_USERNAME }}/fastapi:${{ github.sha }}
-
-
