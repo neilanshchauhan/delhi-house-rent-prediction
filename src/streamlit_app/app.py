@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Get API URL from environment variable
-API_URL = os.getenv("API_URL", "http://localhost:8000")
+API_URL = os.getenv("API_URL", "http://model:8000")
 
 # Page configuration
 st.set_page_config(page_title="Delhi House Rent Predictor", page_icon="🏠", layout="centered")
@@ -115,7 +115,7 @@ def main():
 
     st.markdown("<hr>", unsafe_allow_html=True)
     try:
-        version = os.getenv("APP_VERSION", "1.0.0")
+        version = os.getenv("APP_VERSION", "2 .0.0")
         hostname = socket.gethostname()
         ip_address = socket.gethostbyname(hostname)
         st.markdown(
