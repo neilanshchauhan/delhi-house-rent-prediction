@@ -16,3 +16,6 @@ lightgbm==3.3.5
 # --- Utilities ---
 # PyYAML is not strictly needed by the API, but is part of the overall project
 pyyaml==6.0
+
+
+prometheus-fastapi-instrumentator==6.1.0

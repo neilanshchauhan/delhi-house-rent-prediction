@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: house-price-api-monitor
+  namespace: monitoring # Best practice to create this in the same namespace as Prometheus
+  labels:
+    release: prom # This label tells the Prometheus Operator to pay attention to this monitor
+spec:
+  selector:
+    matchLabels:
+      app: model # This selects the service named 'model'
+  namespaceSelector:
+    matchNames:
+      - default # This looks for the service in the 'default' namespace
+  endpoints:
+  - port: http # Name of the port in your model-service.yaml (e.g., 8000)
+    path: /metrics # The path where your FastAPI app exposes metrics
+    interval: 15s # How often Prometheus should scrape metrics

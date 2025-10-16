@@ -15,8 +15,6 @@ logger = logging.getLogger(__name__)
 # Get API URL from environment variable
 API_URL = os.getenv("API_URL", "http://model:8000")
 
-Instrumentator().instrument(app).expose(app)
-
 # Page configuration
 st.set_page_config(page_title="Delhi House Rent Predictor", page_icon="🏠", layout="centered")
 
