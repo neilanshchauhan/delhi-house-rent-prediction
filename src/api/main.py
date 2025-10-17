@@ -43,6 +43,10 @@ Instrumentator().instrument(app).expose(app)
 def start_metrics_server():
     start_http_server(9100)
 
+# Start the metrics server in a background thread
+metrics_thread = threading.Thread(target=start_metrics_server)
+metrics_thread.start()
+
 # --- API Endpoints ---
 @app.get("/health", tags=["Health Check"])
 async def health_check():
