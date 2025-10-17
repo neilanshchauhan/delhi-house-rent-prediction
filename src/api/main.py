@@ -5,6 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from .inference import predict_rent, batch_predict_rent
 from .schemas import RentPredictionRequest, PredictionResponse
 
+from prometheus_fastapi_instrumentator import Instrumentator 
+from prometheus_client import start_http_server
+import threading
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Delhi House Rent Prediction API",
@@ -34,6 +38,10 @@ app.add_middleware(
 )
 
 Instrumentator().instrument(app).expose(app)
+
+# Start Prometheus metrics server on port 9100 in a background thread
+def start_metrics_server():
+ start_http_server(9100)
 
 # --- API Endpoints ---
 @app.get("/health", tags=["Health Check"])

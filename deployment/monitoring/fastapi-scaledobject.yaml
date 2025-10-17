@@ -26,3 +26,8 @@ spec:
         metricName: request_rate
         query: sum(rate(http_requests_total[1m]))
         threshold: "100"
+
+    - type: cpu
+      metricType: Utilization # Allowed types are 'Utilization' or 'AverageValue'
+      metadata:
+        value: "50" # (If CPU utilization crosses 50%, then CPU autoscaling will be applied)

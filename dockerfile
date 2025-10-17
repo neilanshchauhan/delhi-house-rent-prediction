@@ -10,5 +10,5 @@ COPY ./src /app/src
 COPY ./data /app/data
 COPY ./models /app/models
 
-EXPOSE 8000
+EXPOSE 8000 9100
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

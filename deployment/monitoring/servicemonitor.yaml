@@ -13,6 +13,7 @@ spec:
     matchNames:
       - default # This looks for the service in the 'default' namespace
   endpoints:
-  - port: http # Name of the port in your model-service.yaml (e.g., 8000)
-    path: /metrics # The path where your FastAPI app exposes metrics
+  - port: metrics # Name of the port in your model-service.yaml (e.g., 8000)
+    path: / # The path where your FastAPI app exposes metrics
     interval: 15s # How often Prometheus should scrape metrics
+    scrapeTimeout: 10s # Timeout for scraping metrics
