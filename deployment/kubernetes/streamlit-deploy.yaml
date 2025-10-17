@@ -19,6 +19,7 @@ spec:
     spec:
       containers:
       - image: neilansh/streamlit:v3
+        imagePullPolicy: Always
         name: streamlit
         ports:
         - containerPort: 8501

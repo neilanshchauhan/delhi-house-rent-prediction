@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 API_URL = os.getenv("API_URL", "http://model:8000")
 
 # Page configuration
-st.set_page_config(page_title="Delhi House Rent Predictor", page_icon="🏠", layout="centered")
+st.set_page_config(page_title="🏠 Delhi House Rent Predictor", page_icon="🏠", layout="centered")
 
 # Custom CSS
 st.markdown("""<style>.main { padding-top: 2rem; } .stButton>button { width: 100%; }</style>""", unsafe_allow_html=True)
@@ -115,7 +115,7 @@ def main():
 
     st.markdown("<hr>", unsafe_allow_html=True)
     try:
-        version = os.getenv("APP_VERSION", "2 .0.0")
+        version = os.getenv("APP_VERSION", "3.0.0")
         hostname = socket.gethostname()
         ip_address = socket.gethostbyname(hostname)
         st.markdown(
