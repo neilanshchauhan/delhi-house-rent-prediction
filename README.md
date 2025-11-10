@@ -10,7 +10,7 @@ The system predicts house rent prices in Delhi based on features like location, 
 
 This diagram outlines the full MLOps workflow, from continuous integration and experiment tracking to a production deployment with autoscaling and monitoring.
 
-![MLOps Architecture Diagram](/deployment/diagram.png)
+![MLOps Architecture Diagram](/deployment/diagram_mlops.png)
 
 ---
 
